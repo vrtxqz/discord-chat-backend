@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chat Riêng Tư - Nguyễn & Bạn Thân</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 flex h-screen overflow-hidden">
+
+  <!-- Sidebar giả lập -->
+  <div class="w-60 bg-gray-800 flex flex-col">
+    <div class="p-4 font-bold">Chat Riêng</div>
+    <div class="px-4 py-1 text-gray-400 hover:bg-gray-700 cursor-pointer"># private-chat</div>
+  </div>
+
+  <!-- Chat area -->
+  <div class="flex-1 flex flex-col">
+    <div class="bg-gray-800 p-4 font-bold"># private-chat</div>
+    
+    <div id="messages" class="flex-1 p-4 overflow-y-auto space-y-4"></div>
+    
+    <div class="bg-gray-800 p-4">
+      <form id="form" class="flex">
+        <input id="input" type="text" placeholder="Nhắn gì đi bro... (paste link YT/TikTok/GIF)" class="flex-1 bg-gray-700 rounded-l px-4 py-2 focus:outline-none" />
+        <button type="submit" class="bg-indigo-600 px-6 rounded-r">Gửi</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const socket = io("https://discord-chat-backend.onrender.com");
+
+    const messages = document.getElementById('messages');
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+
+    // Set tên khi connect (mở 2 tab thì nhập tên khác nhau)
+    socket.on('connect', () => {
+      const username = prompt("Nhập tên của bạn:") || 'Anonymous';
+      socket.emit('join', username);
+    });
+
+    socket.on('chatMessage', (msg) => {
+      const item = document.createElement('div');
+      item.className = 'bg-gray-700 p-3 rounded-lg max-w-3xl';
+
+      let content = msg.text;
+      if (content.includes('youtube.com') || content.includes('youtu.be')) {
+        const vidId = content.match(/(?:v=|youtu\.be\/)([^&\n?#]+)/)?.[1];
+        if (vidId) content = `<iframe width="100%" height="315" src="https://www.youtube.com/embed/${vidId}" frameborder="0" allowfullscreen></iframe>`;
+      } else if (content.includes('tiktok.com')) {
+        content = `<blockquote class="tiktok-embed" cite="${content}"><a href="${content}">TikTok</a></blockquote><script async src="https://www.tiktok.com/embed.js"></script>`;
+      } else if (content.match(/\.(gif|png|jpg|jpeg)$/i) || content.includes('giphy.com') || content.includes('tenor.com')) {
+        content = `<img src="${content}" alt="GIF" class="max-w-xs rounded"/>`;
+      }
+
+      item.innerHTML = `<p class="text-sm text-gray-400">${msg.user} • ${new Date(msg.timestamp).toLocaleTimeString()}</p><div>${content}</div>`;
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (input.value) {
+        socket.emit('chatMessage', input.value.trim());
+        input.value = '';
+      }
+    });
+  </script>
+</body>
+</html>
